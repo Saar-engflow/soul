@@ -2,6 +2,7 @@ services:
   - type: web
     name: aura-agent
     env: python
+    plan: free
     # This specifies the directory where the code lives
     rootDir: autonomous_agent
     buildCommand: pip install -r requirements.txt
