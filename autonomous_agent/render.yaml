@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: aura-agent
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: POE_API_KEY
+        sync: false
+      - key: PORT
+        value: 5000
