@@ -44,8 +44,17 @@ class Brain:
             remaining = int(cooldown - (now - self.last_api_call))
             raise Exception(f"Digital silence (Cooldown: {remaining}s)")
 
-        # Reliable models that usually work
-        models_to_try = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro']
+        # Broad range of available models to avoid 404s
+        models_to_try = [
+            'gemini-1.5-flash', 
+            'gemini-1.5-flash-latest',
+            'gemini-1.5-pro', 
+            'gemini-1.5-pro-latest',
+            'models/gemini-1.5-flash',
+            'models/gemini-1.5-pro',
+            'gemini-pro',
+            'models/gemini-pro'
+        ]
         last_error = ""
 
         for model_name in models_to_try:
@@ -59,10 +68,10 @@ class Brain:
                 last_error = str(e)
                 if "429" in last_error:
                     raise Exception("Quota exceeded (429). Please wait.")
-                # If 404 or other, try next model
+                # Continue to next model if 404 or other model-specific error
                 continue
         
-        raise Exception(f"Failed to reach the void: {last_error}")
+        raise Exception(f"Failed to reach the void ({models_to_try[0]}...): {last_error}")
 
     async def generate_thought(self):
         """Generates an internal thought based on current state and memory."""
