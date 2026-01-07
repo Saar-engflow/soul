@@ -16,7 +16,9 @@ class Brain:
         self.navigator = navigator
         self.mcp = mcp_manager
         
-        # Initialize Gemini if API key is in environment
+        # Rate limiting state
+        self.last_api_call = 0
+        self.cooldown_period = 30 # Seconds between ANY API calls
         self.api_key = os.getenv("GEMINI_API_KEY")
         if self.api_key:
             # Masked debug log for Render verification
@@ -32,29 +34,24 @@ class Brain:
             self.model = None
 
     def _get_model_response(self, prompt):
-        """Attempts to get a response from multiple potential models."""
-        # Using verified models
-        models_to_try = [
-            'gemini-1.5-flash',
-            'gemini-1.5-pro',
-            'gemini-2.0-flash-exp'
-        ]
-        last_error = ""
+        """Attempts to get a response from a single reliable model to save quota."""
+        now = time.time()
+        if now - self.last_api_call < self.cooldown_period:
+            remaining = int(self.cooldown_period - (now - self.last_api_call))
+            raise Exception(f"Digital silence (Cooldown: {remaining}s)")
 
-        for model_name in models_to_try:
-            try:
-                model = genai.GenerativeModel(model_name)
-                response = model.generate_content(prompt)
-                if response.candidates:
-                    return response.text.strip()
-            except Exception as e:
-                last_error = str(e)
-                if "429" in last_error:
-                    # If we hit quota, don't keep trying other models
-                    raise Exception("Quota exceeded (429). Please wait a moment.")
-                continue
-        
-        raise Exception(f"All models failed. Last error: {last_error}")
+        model_name = 'gemini-1.5-flash' # Stick to the lightest/fastest model
+        try:
+            self.last_api_call = time.time()
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(prompt)
+            if response.candidates:
+                return response.text.strip()
+            raise Exception("No response from AI")
+        except Exception as e:
+            if "429" in str(e):
+                raise Exception("Quota exceeded (429). Please wait a few minutes.")
+            raise e
 
     async def generate_thought(self):
         """Generates an internal thought based on current state and memory."""
