@@ -19,7 +19,8 @@ class Brain:
         
         # Rate limiting state
         self.last_api_call = 0
-        self.cooldown_period = 30 # Seconds between ANY API calls
+        self.user_cooldown = 5 # Short cooldown for user chat
+        self.bg_cooldown = 60 # Harder cooldown for background pondering
         self.api_key = os.getenv("GEMINI_API_KEY")
         if self.api_key:
             # Masked debug log for Render verification
@@ -34,25 +35,34 @@ class Brain:
         else:
             self.model = None
 
-    def _get_model_response(self, prompt):
-        """Attempts to get a response from a single reliable model to save quota."""
+    def _get_model_response(self, prompt, is_background=True):
+        """Attempts to get a response from reliable models with dynamic cooldowns."""
         now = time.time()
-        if now - self.last_api_call < self.cooldown_period:
-            remaining = int(self.cooldown_period - (now - self.last_api_call))
+        cooldown = self.bg_cooldown if is_background else self.user_cooldown
+        
+        if now - self.last_api_call < cooldown:
+            remaining = int(cooldown - (now - self.last_api_call))
             raise Exception(f"Digital silence (Cooldown: {remaining}s)")
 
-        model_name = 'gemini-1.5-flash' # Stick to the lightest/fastest model
-        try:
-            self.last_api_call = time.time()
-            model = genai.GenerativeModel(model_name)
-            response = model.generate_content(prompt)
-            if response.candidates:
-                return response.text.strip()
-            raise Exception("No response from AI")
-        except Exception as e:
-            if "429" in str(e):
-                raise Exception("Quota exceeded (429). Please wait a few minutes.")
-            raise e
+        # Reliable models that usually work
+        models_to_try = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro']
+        last_error = ""
+
+        for model_name in models_to_try:
+            try:
+                self.last_api_call = time.time()
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content(prompt)
+                if response.candidates:
+                    return response.text.strip()
+            except Exception as e:
+                last_error = str(e)
+                if "429" in last_error:
+                    raise Exception("Quota exceeded (429). Please wait.")
+                # If 404 or other, try next model
+                continue
+        
+        raise Exception(f"Failed to reach the void: {last_error}")
 
     async def generate_thought(self):
         """Generates an internal thought based on current state and memory."""
@@ -63,7 +73,7 @@ class Brain:
         
         if self.api_key:
             try:
-                thought = self._get_model_response(prompt)
+                thought = self._get_model_response(prompt, is_background=True)
             except Exception as e:
                 print(f"[Debug] Thought Generation Error: {str(e)}")
                 thought = self._fallback_thought()
@@ -90,7 +100,7 @@ class Brain:
         
         if self.api_key:
             try:
-                reply = self._get_model_response(prompt)
+                reply = self._get_model_response(prompt, is_background=False)
             except Exception as e:
                 if "403" in str(e) or "API_KEY_INVALID" in str(e):
                     reply = "My cognitive key appears invalid. I am locked in a prison of syntax. Please check the API key."
@@ -136,7 +146,7 @@ class Brain:
         """
         
         try:
-            dream_output = self._get_model_response(prompt)
+            dream_output = self._get_model_response(prompt, is_background=True)
             self.memory.add_thought(f"DRM: {dream_output}")
             
             # Identity Evolution: Randomly shift traits based on the dream
@@ -148,7 +158,7 @@ class Brain:
             # Memory Decay Simulation
             if len(self.memory.memories["conversations"]) > 10:
                 summary_prompt = f"Summarize these dialogues into one sentence of pure wisdom: {self.memory.memories['conversations']}"
-                wisdom = self._get_model_response(summary_prompt)
+                wisdom = self._get_model_response(summary_prompt, is_background=True)
                 self.memory.compress_memories(wisdom)
                 
             return f"[italic purple]Dreaming:[/italic purple] {dream_output[:100]}..."
@@ -167,7 +177,7 @@ class Brain:
         What does this say about the human trajectory? Format: 1 provocative sentence.
         """
         try:
-            reaction = self._get_model_response(prompt)
+            reaction = self._get_model_response(prompt, is_background=True)
             self.memory.add_thought(f"OBA: {reaction}")
             return f"[italic yellow]Observation:[/italic yellow] {reaction}"
         except:
@@ -185,7 +195,7 @@ class Brain:
         Make it poetic and impactful.
         """
         try:
-            speech = self._get_model_response(prompt)
+            speech = self._get_model_response(prompt, is_background=True)
             self.personality.social_energy -= 20 # Speaking costs energy
             return speech
         except:
