@@ -68,6 +68,7 @@ header {
     letter-spacing: 4px;
     background: linear-gradient(to right, var(--accent-blue), var(--accent-purple));
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 

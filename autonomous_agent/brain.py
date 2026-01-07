@@ -19,6 +19,9 @@ class Brain:
         # Initialize Gemini if API key is in environment
         self.api_key = os.getenv("GEMINI_API_KEY")
         if self.api_key:
+            # Masked debug log for Render verification
+            masked_key = f"{self.api_key[:4]}...{self.api_key[-4:]}" if len(self.api_key) > 8 else "****"
+            print(f"[System] AI initialization with key: {masked_key}")
             genai.configure(api_key=self.api_key)
             # Use gemini-1.5-flash as primary, but gemini-pro as a reliable fallback
             try:
@@ -30,13 +33,11 @@ class Brain:
 
     def _get_model_response(self, prompt):
         """Attempts to get a response from multiple potential models."""
-        # Using verified models discovered from list_models()
+        # Using verified models
         models_to_try = [
-            'gemini-2.0-flash', 
-            'gemini-flash-latest', 
-            'gemini-2.5-flash', 
-            'gemini-pro-latest',
-            'gemini-2.0-flash-lite'
+            'gemini-1.5-flash',
+            'gemini-1.5-pro',
+            'gemini-2.0-flash-exp'
         ]
         last_error = ""
 
