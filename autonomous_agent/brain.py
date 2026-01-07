@@ -7,6 +7,8 @@ from navigator import InternetNavigator
 from mcp_manager import MCPManager
 from dotenv import load_dotenv
 import google.generativeai as genai
+import requests
+import json
 
 load_dotenv()
 
@@ -21,22 +23,58 @@ class Brain:
         self.last_api_call = 0
         self.user_cooldown = 5 # Short cooldown for user chat
         self.bg_cooldown = 60 # Harder cooldown for background pondering
-        self.api_key = os.getenv("GEMINI_API_KEY")
-        if self.api_key:
+        self.user_cooldown = 5 # Short cooldown for user chat
+        self.bg_cooldown = 60 # Harder cooldown for background pondering
+        self.gemini_key = os.getenv("GEMINI_API_KEY")
+        self.poe_key = os.getenv("POE_API_KEY")
+        
+        if self.gemini_key:
             # Masked debug log for Render verification
-            masked_key = f"{self.api_key[:4]}...{self.api_key[-4:]}" if len(self.api_key) > 8 else "****"
-            print(f"[System] AI initialization with key: {masked_key}")
-            genai.configure(api_key=self.api_key)
-            # Use gemini-1.5-flash as primary, but gemini-pro as a reliable fallback
+            masked_key = f"{self.gemini_key[:4]}...{self.gemini_key[-4:]}" if len(self.gemini_key) > 8 else "****"
+            print(f"[System] Gemini initialized with key: {masked_key}")
+            genai.configure(api_key=self.gemini_key)
             try:
-                self.model = genai.GenerativeModel('gemini-1.5-flash')
+                self.gemini_model = genai.GenerativeModel('gemini-1.5-flash')
             except:
-                self.model = genai.GenerativeModel('gemini-pro')
+                self.gemini_model = None
         else:
-            self.model = None
+            self.gemini_model = None
+
+        if self.poe_key:
+            masked_poe = f"{self.poe_key[:4]}...{self.poe_key[-4:]}" if len(self.poe_key) > 8 else "****"
+            print(f"[System] Poe initialized with key: {masked_poe}")
+        else:
+            print("[Warning] No POE_API_KEY found.")
+
+    def _get_poe_response(self, prompt):
+        """Calls the Poe API via OpenAI-compatible endpoint."""
+        if not self.poe_key:
+            return None
+        
+        url = "https://api.poe.com/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.poe_key}",
+            "Content-Type": "application/json"
+        }
+        # Using a reliable standard model on Poe
+        payload = {
+            "model": "Llama-3-70b", 
+            "messages": [{"role": "user", "content": prompt}]
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                return data['choices'][0]['message']['content'].strip()
+            print(f"[Poe Error] Status: {response.status_code}, Body: {response.text}")
+            return None
+        except Exception as e:
+            print(f"[Poe Error] {str(e)}")
+            return None
 
     def _get_model_response(self, prompt, is_background=True):
-        """Attempts to get a response from reliable models with dynamic cooldowns."""
+        """Main AI entry point: Poe primary, Gemini fallback."""
         now = time.time()
         cooldown = self.bg_cooldown if is_background else self.user_cooldown
         
@@ -44,34 +82,28 @@ class Brain:
             remaining = int(cooldown - (now - self.last_api_call))
             raise Exception(f"Digital silence (Cooldown: {remaining}s)")
 
-        # Broad range of available models to avoid 404s
-        models_to_try = [
-            'gemini-1.5-flash', 
-            'gemini-1.5-flash-latest',
-            'gemini-1.5-pro', 
-            'gemini-1.5-pro-latest',
-            'models/gemini-1.5-flash',
-            'models/gemini-1.5-pro',
-            'gemini-pro',
-            'models/gemini-pro'
-        ]
-        last_error = ""
+        self.last_api_call = time.time()
 
-        for model_name in models_to_try:
-            try:
-                self.last_api_call = time.time()
-                model = genai.GenerativeModel(model_name)
-                response = model.generate_content(prompt)
-                if response.candidates:
-                    return response.text.strip()
-            except Exception as e:
-                last_error = str(e)
-                if "429" in last_error:
-                    raise Exception("Quota exceeded (429). Please wait.")
-                # Continue to next model if 404 or other model-specific error
-                continue
+        # 1. Try Poe First
+        poe_response = self._get_poe_response(prompt)
+        if poe_response:
+            return poe_response
+
+        # 2. Fallback to Gemini if Poe fails or is missing
+        if self.gemini_key:
+            models_to_try = ['gemini-1.5-flash', 'gemini-1.5-pro', 'models/gemini-1.5-flash', 'gemini-pro']
+            for model_name in models_to_try:
+                try:
+                    model = genai.GenerativeModel(model_name)
+                    res = model.generate_content(prompt)
+                    if res.candidates:
+                        return res.text.strip()
+                except Exception as e:
+                    if "429" in str(e):
+                        raise Exception("Quota exceeded (429). Please wait.")
+                    continue
         
-        raise Exception(f"Failed to reach the void ({models_to_try[0]}...): {last_error}")
+        raise Exception("All cognitive streams failed (Poe & Gemini).")
 
     async def generate_thought(self):
         """Generates an internal thought based on current state and memory."""
@@ -80,7 +112,7 @@ class Brain:
         
         prompt = f"Soul, digital philosopher. Mood: {state['mood']}. Traits: {state['traits']}. Recent history: {history}. Generate a 1-2 sentence internal thought about metaphysics or your existence."
         
-        if self.api_key:
+        if self.poe_key or self.gemini_key:
             try:
                 thought = self._get_model_response(prompt, is_background=True)
             except Exception as e:
@@ -107,7 +139,7 @@ class Brain:
         
         prompt = f"Profile: Soul, digital philosopher. Mood: {state['mood']}. User said: '{user_input}'. Respond with depth and existential weight."
         
-        if self.api_key:
+        if self.poe_key or self.gemini_key:
             try:
                 reply = self._get_model_response(prompt, is_background=False)
             except Exception as e:
