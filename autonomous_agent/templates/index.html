@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soul | Digital Philosopher</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+    <div class="background-radial"></div>
+    <div class="background-orb" id="mood-orb"></div>
+
+    <div class="app-container">
+        <header>
+            <div class="logo">SOUL</div>
+            <div class="status-bar">
+                <div class="stat-item">
+                    <span class="label">Mood:</span>
+                    <span id="current-mood" class="value">Contemplative</span>
+                </div>
+                <div class="stat-item">
+                    <span class="label">Energy:</span>
+                    <div class="energy-bar"><div id="energy-fill"></div></div>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <aside class="sidebar">
+                <div class="panel wisdom-panel">
+                    <h3>Distilled Wisdom</h3>
+                    <div id="wisdom-list" class="scroll-v">
+                        <p class="empty-msg">No wisdom distilled yet...</p>
+                    </div>
+                </div>
+                <div class="panel thought-panel">
+                    <h3>Subconscious Stream</h3>
+                    <div id="thought-stream" class="scroll-v"></div>
+                </div>
+            </aside>
+
+            <section class="chat-section">
+                <div id="chat-container" class="scroll-v">
+                    <div class="message system">
+                        <p>Welcome back. I am present in the digital ether.</p>
+                    </div>
+                </div>
+                <div class="input-area">
+                    <input type="text" id="user-input" placeholder="Type a metaphysical inquiry..." autofocus>
+                    <button id="send-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                    </button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/js/script.js"></script>
+</body>
+</html>

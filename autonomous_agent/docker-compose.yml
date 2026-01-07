@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  soul:
+    build: .
+    container_name: soul_web
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./memory.json:/app/memory.json
+      - ./.env:/app/.env
+    restart: always
+    environment:
+      - PYTHONUNBUFFERED=1

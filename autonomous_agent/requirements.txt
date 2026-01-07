@@ -1,0 +1,10 @@
+google-generativeai
+python-dotenv
+rich
+beautifulsoup4
+requests
+asyncio
+mcp
+flask
+flask-socketio
+eventlet
