@@ -34,8 +34,8 @@ def soul_heartbeat():
     
     while True:
         try:
-            # Ponder every 15-45 seconds
-            time.sleep(os.urandom(1)[0] % 30 + 15)
+            # Ponder every 60-120 seconds to stay within free tier quota
+            time.sleep(os.urandom(1)[0] % 60 + 60)
             
             # Check for proactive behavior
             action_result = loop.run_until_complete(brain.check_curiosity())

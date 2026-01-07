@@ -49,6 +49,9 @@ class Brain:
                     return response.text.strip()
             except Exception as e:
                 last_error = str(e)
+                if "429" in last_error:
+                    # If we hit quota, don't keep trying other models
+                    raise Exception("Quota exceeded (429). Please wait a moment.")
                 continue
         
         raise Exception(f"All models failed. Last error: {last_error}")
@@ -195,17 +198,16 @@ class Brain:
         chance = random.random()
         
         # 1. Proactive Speech (If energy is high enough)
-        # Lowered threshold and increased chance for more 'sentience'
-        if self.personality.social_energy > 40 and chance < 0.2:
+        if self.personality.social_energy > 60 and chance < 0.1:
             return await self.initiate_proactive_dialogue()
 
         # 2. Dreaming (Deep Soul Logic) - Recharges energy faster
-        if chance < 0.15:
+        if chance < 0.08:
             self.personality.social_energy = min(100, self.personality.social_energy + 20)
             return await self.dream()
 
         # 3. World Observation
-        if chance < 0.07:
+        if chance < 0.04:
             return await self.observe_world()
 
         # 4. MCP Tool Usage
