@@ -1,5 +1,6 @@
 import os
 import random
+import time
 from personality import Personality
 from memory import MemoryManager
 from navigator import InternetNavigator
