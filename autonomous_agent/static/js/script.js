@@ -38,7 +38,12 @@ function appendMessage(role, text) {
   div.className = `message ${role}`;
   div.innerHTML = `<p>${text}</p>`;
   chatContainer.appendChild(div);
-  chatContainer.scrollTop = chatContainer.scrollHeight;
+
+  // Smooth scroll to bottom
+  chatContainer.scrollTo({
+    top: chatContainer.scrollHeight,
+    behavior: 'smooth'
+  });
 }
 
 async function sendMessage() {
